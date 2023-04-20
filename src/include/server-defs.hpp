@@ -482,9 +482,9 @@ class MovedObject {
         }
 };
    
-
-
-
+//function that converts angles (in radians) into ref
+//TODO
+// ADJUST THIS FUNCTION 
 int angle_to_ref(int motor, float angle)
 {
     switch (motor)
@@ -504,6 +504,9 @@ int angle_to_ref(int motor, float angle)
     return 0;
 }
 
+//function to convert ref to angle (in radians)
+//TODO
+// adjust this function to your robot
 double ref_to_angle(int motor, int ref)
 {
     switch (motor)
@@ -524,6 +527,8 @@ double ref_to_angle(int motor, int ref)
 }
 
 // joints informed in static way
+//TODO
+//CHANGE THE RANGE OF VALUES TO YOUR ROBOT
 const std::list<JointInfo> METAINFOS = 
 {
     JointInfo(ref_to_angle(1,-450), ref_to_angle(1,500)),
