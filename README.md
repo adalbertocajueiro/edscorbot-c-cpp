@@ -3,45 +3,54 @@ This repository contains the simulated server, an application that simulates the
 
 The main use of this project is to provide a first version of the real server to be embedded into the arm. 
 
+the implementation follows the [Async API specification](https://app.swaggerhub.com/apis-docs/ADALBERTOCAJUEIRO_1/ed-scorbot_async/1.0.0), establishing all channels/topics and the data to be exchanged between applications.
+
 ### Tools Information
 This project has been developed using the following tools:
 * CMake 3.26.3
 * GNU Make 4.3
 * GCC 11.3.0 (Ubuntu 22.04) 
-* Visual Studio Code version 1.77.1 with extensions: C/C++ Extension Pack.  
+* Visual Studio Code version 1.77.1 with C/C++ Extension Pack.  
 
 ### Project structure
-* After downloading and extracting the project, the folder `edscorbot-c-cpp` is the root folder. It has a specific folder/files structure
+* After downloading and extracting the project, the folder `edscorbot-c-cpp` is the root folder. It has a specific folder/files structure.
+* The file `edscorbot-c-cpp/CMakeLists.txt` contains the configuration and goals for this project.
 * File `include/server-defs.hpp` contains the objects implementing the schemas defined in the Async API specification. Have a look at them to undestand their features. 
+* File `impl/server-impls.cpp` contains some basic implementations.
+
+It is important to have a look at these files jointly with the API specification to understand the adherence between them.
 
 ### Installing
 * You can try to use your own versions of the tools. If it does not work we advice to install the above versions
 * Download de project and unzip it
 * Open the project in Visual Studio Code (vscode). It might be possible vscode offers other extensions to be installed. Just accept it.
-* File CMakeLists.txt contains the configuration information to compile the project.
+
 
 ### Compiling
-The project depends on other specific projects that must be available or previously installed:
+The project depends on other specific projects that must be available or previously compiled or installed:
 
 #### Compiling Mosquitto
-As the server connects with Mosquitto broker, its compilation requires the Mosquitto libraries are previously installed. You can download the [Mosquitto sources](https://github.com/eclipse/mosquitto) and compile it to any target platform. We have compiled it to the local platform considering static libraries. You can customize the compilation options and install/compile (suggested) the dependencies. In our example, we have installed:
+As the server connects with Mosquitto broker, its compilation requires the Mosquitto libraries. You can download the [Mosquitto sources](https://github.com/eclipse/mosquitto) and compile it to any target platform. We have compiled it to the local platform considering static libraries. You can customize the compilation options and install/compile the dependencies (this is the recommended approach). In our example, we had run:
 * `sudo apt-get update` to update the artifact list  
 * `sudo apt-get install openssl libssl-dev` to install openssl and openssl development files
 * `sudo apt-get install libcjson-dev` to install libcjson. this lib is required to compile `mosquitto_pub` and `mosquitto_sub` tools 
 * `sudo apt-get install xsltproc` to install the support for generating documentation during the compilation
-* As we have compiled the static libraries, we had to set this option in file `mosquitto/CMakeLists.txt`: `option(WITH_STATIC_LIBRARIES "Build static versions of the libmosquitto/pp libraries?" ON)`
-* `cd mosqquitto` to enter the mosquitto main folder
+* We had to set the option to generate static libraries in file `mosquitto/CMakeLists.txt`: 
+    
+    `option(WITH_STATIC_LIBRARIES "Build static versions of the libmosquitto/pp libraries?" ON)`
+
+* `cd mosquitto` to enter the mosquitto main folder
 * `mkdir build` to create a specific output folder
 * `cd build` to enter the output folder
 * `cmake ..` to generate build files from the parent folder into current folder
 * `make install` to compile and install the library
 
-If everything goes well you should see the generated static lib file is `build/lib/libmosquitto_static.a`. Keep its full path to be used in server compilation.
+If everything goes well you should see the generated static lib file is `mosquitto/build/lib/libmosquitto_static.a`. Keep its full path to be used in server compilation.
 
 For more information about compiling Mosquitto, please refer to its official site.
 
 #### Compiling Niels Lohmann JSON library
-Although Mosquitto uses cJSON as library for reading/writing JSON, the simulated server uses a more sophisticated library: [Niels Lohmann json lib](https://github.com/nlohmann/json.git). We have cloned the repository and compiled it:
+Although Mosquitto uses cJSON as library for reading/writing JSON, the simulated server uses a more sophisticated library: [Niels Lohmann json lib](https://github.com/nlohmann/json.git). We have cloned the repository and performed the following commands:
 
 * `cd json` to enter the project folder
 * `mkdir build` to create a specific output folder
@@ -49,15 +58,22 @@ Although Mosquitto uses cJSON as library for reading/writing JSON, the simulated
 * `cmake ..` to generate build files from the parent folder into current folder
 * `make install` to compile and install the library
 
-If everything goes well you will have wverything installed in your machine to compile and run the server.
+If everything goes well you will have all dependencies ready to compile and run the server.
 
 #### Compiling the simulated server
-After cloning the project, follow these steps to compile the project:
+Before compiling the project we had provided the full path of the static mosquitto library generated by mosquitto compilation. This is done in file `edscorbot-c-cpp/CMakeLists.txt`. Lookup the line:
+
+`TARGET_LINK_LIBRARIES(simulated_server PRIVATE  /home/adalberto/tmp/mosquitto/build/lib/libmosquitto_static.a -lpthread)`
+`
+
+and reaplace the full path only with your stati library full path.
+
+After that, the steps to compile the project are:
 * `cd edscorbot-c-cpp` to enter the project folder
 * `mkdir build` to create a specific output folder
 * `cd build` to enter the output folder
 * `cmake ..` to generate build files from the parent folder into current folder
-* `make install` to compile and install the library 
+* `make install` to compile and generate the executable of the simulated server.
 
 ### Running 
 After compiling, identify the instance of Mosquitto you want to connect and adjust the value of the variable `#define mqtt_host "localhost"` in `simulated_server.cpp`.Visual studio code offers a button to start the server (Debug or Run). Run it. If everything goes well you should se something as bellow:
@@ -77,8 +93,14 @@ Metainfo published {
     "signal":2}
 ```    
 
+This means the server has registed the Mosquitto broker successfully, notified the existing comsumers with its meta info and is ready to send/receive messages on channels/topics `ROBOT_NAME/commands` and `ROBOT_NAME/moved`.
+
 ### Migrating to the real controller
-A good idea is to user the simulated server file to fit your robot characteristics. After that, inject the code to control your robotic arm. In the function `message_callback` you will see a specific comment where you must put your implementation to do everything as before.
+Tehe code of simulated server has been derived from the real server `mqtt_server.cpp` and adjusted to handle messages according to the new communication model established in the [Async API specification](https://app.swaggerhub.com/apis-docs/ADALBERTOCAJUEIRO_1/ed-scorbot_async/1.0.0). Therefore, you will see a good overlap betqeen these codes. 
+
+A good idea is to user the simulated server file to fit your robot characteristics first and then inject the code to control your robotic arm. In the function `message_callback` you will see a specific comment where you must put your implementation to do everything as before. 
+
+Furthermore, when putting the executable into the robotic arm's platform you must to handle all dependencies. That is, they must be available in the target platform. The project [Py-EDScorbotTool](https://github.com/RTC-research-group/Py-EDScorbotTool) already does this, as well as has a specific branch (`dev-search_Home`) with an implementation (`mocked_server.cpp`) invoking the functions to move the arm.
 
 ### Reference Documentation
 For further reference, please consider the following items:
