@@ -75,20 +75,27 @@ info:
 
   termsOfService: https://asyncapi.org/terms/
   contact:
-    name: Enrique Piñero Fuentes
-    url: https://www.asyncapi.org/support
-    email: epinerof@us.es
+    name: Adalberto Cajueiro de Farias
+    email: adalberto@computacao.ufcg.edu.br
   license:
     name: Apache 2.0
     url: 'https://www.apache.org/licenses/LICENSE-2.0'
   
 servers:
   mosquitto:
-    url: host.to.be.defined
-    protocol: secure-mqtt
-    description: Mosquitto test broker hosted at University of Sevilla
-    #security:
-    #  - user-password: []
+    url: 192.168.1.104
+    protocol: mqtt
+    description: Mosquitto broker hosted at University of Sevilla
+    
+  edscorbot-server:
+    url: 192.168.1.115
+    protocol: mqtt
+    description: Controller running inside the physical robotic arm with name `EDScorbot`
+
+  simulated-server:
+    url: 192.168.1.104
+    protocol: mqtt
+    description: Simulated controller running in a computer simulating a robotic arm with name `EDScorbotSim`
 
 defaultContentType: application/json
 
@@ -158,22 +165,28 @@ components:
       description: The reference value (angle) of a joint.
 
     Point:
-      type: array
+      type: object
       description: A tuple (set of coordinates) containing (possibly many) information about the angles of the joints and one information (the last coordinate) meaning the time to wait before accepting the next move command. The representation of a point as an array allows many robots to be handled as there is no fixed number of joints. This is formation should be obtained bu clients before connecting to a specific arm. 
-      items:
-        $ref: '#/components/schemas/Joint'
+      properties:
+        coordinates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Joint'
     
     Trajectory:
-      type: array
-      description: A array of points to be applied to the arm.
-      items:
-        $ref: '#/components/schemas/Point'
+      type: object
+      properties:
+        points:
+          type: array
+          description: A array of points to be applied to the arm.
+          items:
+            $ref: '#/components/schemas/Point'
           
     ErrorState:
       type: boolean
       description: A flag representing that the controller is in an internal error state probably due to some problem with the physical arm. 
 
-    CommandSignal:
+    CommandsSignal:
       type: integer
       description: The function/answer involved in the `commands` topic.  
       enum:
@@ -218,9 +231,9 @@ components:
       description: Meta information about a joint. It contains the minimum and the maximum angles of the joint.
       properties:
         minimum:
-          type: integer
+          type: number
         maximum:
-          type: integer
+          type: number
 
     CommandObject:
       type: object
@@ -229,15 +242,16 @@ components:
         - signal
       properties:
         signal:
-          $ref: '#/components/schemas/CommandSignal'
+          $ref: '#/components/schemas/CommandsSignal'
         client:
           $ref: '#/components/schemas/Client'
         error:
           $ref: '#/components/schemas/ErrorState'
-        content:
-          oneOf:
-            - $ref: '#/components/schemas/Point'
-            - $ref: '#/components/schemas/Trajectory'
+        point:
+          $ref: '#/components/schemas/Point'
+        trajectory:
+          $ref: '#/components/schemas/Trajectory'
+          
     MovedObject:
       type: object
       description: The object to be communicated though channel `moved`. It contains one point, the error state and the client (owner)
