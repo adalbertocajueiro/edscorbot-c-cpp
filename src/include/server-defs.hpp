@@ -4,14 +4,23 @@
 
 using json = nlohmann::json;
 
-//controller name and channels/topics
+//controller name
+//TODO Adjust to your controller name
 const std::string CONTROLLER_NAME = "EDScorbot";
+
+//channel names
 const std::string META_INFO = "metainfo";
-const std::string COMMANDS = "EDScorbot/commands";
-const std::string MOVED = "EDScorbot/moved";
+const std::string COMMANDS = "commands";
+const std::string MOVED = "moved";
+
+//commands and moved topics are built from controller name and channel names
+std::string COMMANDS_TOPIC;
+std::string MOVED_TOPIC;
+
 
 int angle_to_ref(int motor, float angle);
 double ref_to_angle(int motor, int ref);
+
 
 //global flag representing error state of the robot
 static bool error_state = false;
@@ -540,7 +549,9 @@ const std::list<JointInfo> METAINFOS =
 };
 
 //signatures of useful functions
-int publish_message(const char *topic, const char *buf);
+int build_topics();
+
+int publish_message(std::string topic, const char *buf);
 
 bool has_signal(std::string message);
 

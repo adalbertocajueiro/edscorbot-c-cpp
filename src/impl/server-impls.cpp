@@ -25,3 +25,16 @@ MetaInfoObject initial_metainfoobj(){
 
     return result;
 }
+
+int build_topics(){
+    COMMANDS_TOPIC = CONTROLLER_NAME;
+    COMMANDS_TOPIC.append("/");
+    COMMANDS_TOPIC.append(COMMANDS);
+
+    MOVED_TOPIC = CONTROLLER_NAME;
+    MOVED_TOPIC.append("/");
+    MOVED_TOPIC.append(MOVED);
+
+    return 0;
+}
+

@@ -50,7 +50,7 @@ void* search_home_threaded_function(void* arg){
 	usleep(4000000);
 	
 	//publish message notifying that home has been reached
-	publish_message("EDScorbot/commands",output.to_json().dump().c_str());
+	publish_message(COMMANDS_TOPIC,output.to_json().dump().c_str());
 	std::cout << "Home position reached" << std::endl;
 	return NULL;
 }
@@ -80,7 +80,7 @@ void* move_to_point_threaded_function(void* arg){
 	output.content = realPoint;
 	
 	//publish message notifying that the point has been published
-	publish_message("EDScorbot/moved",output.to_json().dump().c_str());
+	publish_message(MOVED_TOPIC,output.to_json().dump().c_str());
 	std::cout << "Arm moved to point " << output.content.to_json().dump().c_str() << std::endl;
 
 	//after publishing the message, the current_point must be re-instantiated with empty point
@@ -111,13 +111,13 @@ void move_to_point(Point point){
 	//it is important to fill the coordinates with the number of joints
 	//informed in the metainfo.
 	// for the moment we publish the same point we have received
-	Point realPoint = current_point;
+	Point realPoint = point;
 
 	//for the moment we use current_point to notify the user
 	output.content = realPoint;
 	
 	//publish message notifying that the point has been published
-	publish_message("EDScorbot/moved",output.to_json().dump().c_str());
+	publish_message(MOVED_TOPIC,output.to_json().dump().c_str());
 	std::cout << "Arm moved to point " << output.content.to_json().dump().c_str() << std::endl;
 
 	//after publishing the message, the current_point must be re-instantiated with empty point
@@ -169,23 +169,32 @@ void handle_signal(int s)
 //ADJUST THE NAME OF YOUR ROBOT IN THE PREFIX OF THE TOPICS!!!!
 void subscribe_all_topics()
 {
-    printf("Subscribing on topic metainfo\n");
-    mosquitto_subscribe(mosq, NULL, "metainfo", 0);
-    printf("Subscribing on topic EDScorbot/commands\n");
-    mosquitto_subscribe(mosq, NULL, "EDScorbot/commands", 0);
+	build_topics();
+
+	std::cout << "Subscribing on topic "
+			  << META_INFO
+			  << std::endl;
+	
+	mosquitto_subscribe(mosq, NULL, META_INFO.c_str(), 0);
+
+	std::cout << "Subscribing on topic "
+			  << COMMANDS_TOPIC.c_str()
+			  << std::endl;
+
+	mosquitto_subscribe(mosq, NULL, COMMANDS_TOPIC.c_str(), 0);
 }
 
-int publish_message(const char *topic, const char *buf)
+int publish_message(std::string topic, const char *buf)
 {
     char *payload = (char *)buf;
-	int rc = mosquitto_publish(mosq, NULL, topic, strlen(payload), payload, 1, false);
+	int rc = mosquitto_publish(mosq, NULL, topic.c_str(), strlen(payload), payload, 1, false);
 	return rc;
 }
 
 //handles messages on channel metainfo
 void handle_metainfo_message(std::string mesage){
 	MetaInfoObject mi = initial_metainfoobj();
-	publish_message("metainfo",mi.to_json().dump().c_str());
+	publish_message(META_INFO,mi.to_json().dump().c_str());
 }
 
 //handles messages on channel ROBOTNAME/commands
@@ -219,7 +228,7 @@ void handle_commands_message(const struct mosquitto_message *message){
 						<< owner.to_json().dump().c_str()
 						<< std::endl;
 
-			publish_message("EDScorbot/commands", output.to_json().dump().c_str());
+			publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 			
 			std::cout << "Moving arm to home..." << std::endl;
 
@@ -296,7 +305,7 @@ void handle_commands_message(const struct mosquitto_message *message){
 				output.signal = ARM_CANCELED_TRAJECTORY;
 				output.client = owner;
 				output.error = error_state;
-				publish_message("EDScorbot/commands", output.to_json().dump().c_str());
+				publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 				std::cout << "Trajectory cancelled. " << std::endl;
 			}
 		}
@@ -306,16 +315,21 @@ void handle_commands_message(const struct mosquitto_message *message){
 		}
 		break;
 	case ARM_DISCONNECT:
-		std::cout << "Request disconnect received. " << std::endl;
+		
 		Client c = receivedCommand.client;
+		std::cout << "Request disconnect received. " 
+			<< receivedCommand.to_json().dump().c_str()
+			<< std::endl;
 		if (c == owner)
 		{
 			owner = Client();
 			output.signal = ARM_DISCONNECTED;
 			output.client = c;
-			publish_message("EDScorbot/commands", output.to_json().dump().c_str());
+			publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 			std::cout 	<< "Client disconnected " 
-						<< c.to_json().dump().c_str()
+						<< output.to_json().dump().c_str()
+						<< " on channel "
+						<< COMMANDS_TOPIC
 						<< std::endl;
 		}
 
@@ -345,7 +359,6 @@ void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_
 			match = std::strcmp(message->topic,"EDScorbot/commands") == 0;
 			if (match){
 				handle_commands_message(message);
-				
 			}
 		}
 
@@ -383,7 +396,7 @@ int main(int argc, char *argv[])
         subscribe_all_topics();
 
 		MetaInfoObject mi = initial_metainfoobj();
-		publish_message("metainfo",mi.to_json().dump().c_str());
+		publish_message(META_INFO,mi.to_json().dump().c_str());
 		std::cout << "Metainfo published " << mi.to_json().dump().c_str() << std::endl;
 		
 		rc = mosquitto_loop_start(mosq);
