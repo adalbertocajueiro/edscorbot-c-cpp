@@ -63,7 +63,7 @@ Before compiling the project we had provided the full path of the static mosquit
 `TARGET_LINK_LIBRARIES(simulated_server PRIVATE  /home/adalberto/tmp/mosquitto/build/lib/libmosquitto_static.a -lpthread)`
 `
 
-and reaplace the full path only with your stati library full path.
+and reaplace the full path only with your mosquitto static library full path.
 
 After that, the steps to compile the project are:
 * `cd edscorbot-c-cpp` to enter the project folder
@@ -109,7 +109,9 @@ This means the server has registed the Mosquitto broker successfully, notified t
 ### Migrating to the real controller
 Tehe code of simulated server has been derived from the real server `mqtt_server.cpp` and adjusted to handle messages according to the new communication model established in the [Async API specification](https://app.swaggerhub.com/apis-docs/ADALBERTOCAJUEIRO_1/ed-scorbot_async/1.0.0). Therefore, you will see a good overlap betqeen these codes. 
 
-A good idea is to user the simulated server file to fit your robot characteristics first and then inject the code to control your robotic arm. In the function `message_callback` you will see a specific comment where you must put your implementation to do everything as before. 
+A good idea is to first adjust the simulated server file to have your robot characteristics and then inject the code to control your robotic arm. In the function `message_callback` you will see a specific comment where you must put your implementation to do everything as before. 
+
+All the source code is commented. Everything you need to change to customise the code to your robot contains a `TODO:` label. Use it to be faster when customizing.
 
 Furthermore, when putting the executable into the robotic arm's platform you must to handle all dependencies. That is, they must be available in the target platform. The project [Py-EDScorbotTool](https://github.com/RTC-research-group/Py-EDScorbotTool) already does this, as well as has a specific branch (`dev-search_Home`) with an implementation (`mocked_server.cpp`) invoking the functions to move the arm.
 
