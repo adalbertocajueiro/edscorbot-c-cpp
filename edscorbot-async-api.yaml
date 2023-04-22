@@ -5,72 +5,55 @@ info:
   title: ES Scorbot Async API
   version: 1.0.0
   description: >
-    The ED Scorbot low level services definition for controlling an watching values from the robotic arm. 
+    The EDScorbot asynchronous service specification for controlling the robotic arm hosted in University of Seville. 
 
 
-    ### Some useful links:
+    #### Some useful links
 
-    * [Ed Scorbot Python]
-    (https://github.com/RTC-research-group/Py-EDScorbotTool) - the Github
-    projectcontaining the library (real implementation) of elementary/low level
-    functions to access the robotic arm
+    * [Ed Scorbot Python](https://github.com/RTC-research-group/Py-EDScorbotTool) - the main Github project with details about the entire project and the low level code to control the robotic arm
 
-    * [Ed Scorbot Documentation]
-    (https://py-edscorbottool.readthedocs.io/en/latest/) - the user
-    documentation/guide of the ED Scorbot tools (GUI, command line and detailed
-    configurations). 
+    * [Ed Scorbot Documentation](https://py-edscorbottool.readthedocs.io/en/latest/) - documentation about the entire project
 
-    ### Symbology
+ 
+    #### Symbology
 
-    * CONTROLLER = Arm's controller. The service responsible for receiving messages from clients, handling the physical arm and notifying clients. The controller guarantees the arm works accodring with its requirements.
+    * **CONTROLLER** - Arm's high level controller. The microservice service responsible for receiving messages from clients, handling the physical arm and notifying clients. It guarantees the arm works according with its requirements.
 
-    * CLIENT = Any application that wants to interact with the arm. In our case, this application is an Angular front-end to provide a friendly user experience to the final user (human).
+    * **CLIENT** = Any application that wants to interact with the arm. In our case, this application is an Angular front-end to provide a friendly user experience to the final user (human).
 
-    * We use a style where the information flows in channels from providers to subscribers.
+    * **CONTROLLER** and **CLIENT** can be publishers and subscribers at the same time. For each arm there is only one **CONTROLLER** and possibly many **CLIENTS**. The **CONTROLLER** is responsible for guaranteeing the correct funcioning of the arm in a scenario where many **CLIENTS** want to use the robotic arm. The arm accepts only one **CLIENT** at a time (which becomes the arm's owner). Other clients can use the arm only when the arm is free (there is no current owner).
 
-    ### Communication Design
+    #### Communication Design
 
-    The implemented controller follows a design in which topics are minimize. Tha is, a single topic is used to send information between providers and consumers in two directions. This reduces the mumber of channels/topics, but increases the implementation complexity in applications as they should communicate in a topic and handle the callback in the same topic. 
-
-
-    Furthermore, to provide the possibility of connecting many controllers to a same broker, we include the `Robot Name` as prefix of the channel/topic. For example, let us adopt `EDScorbot` as the robot's name from now on. We adopt the channel `metainfo` as a meta channel on which controllers can publish information about themsalves, such as name of the arm and information about joints (maximum angle, minimum angle, number of joints, etc.). 
-
-    #### Metainfo 
-
-    The requests and the answers concerned with metainfo are encapsulated in the payload of the message (communicated through channel `metainfo`). We distinguish which function or signal is sent/received using integers with the following semantics:
-
-      * `ARM_GET_METAINFO` (value 1) - provided to clients to use to request the metainfo about all arms connected to the broker. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_METAINFO` (value 2) - provided to CONTROLLERS inform the metainfo of their associated physical arms. CONTROLLERS (publishers) sends this data to the CLIENTS (subscribers)
+    The implemented controller follows a design containing three topics: 
+      
+    *  **metainfo** - to allow information exchange about specificities of each robotic arm (many arms can be available in a same broker). When a **CONTROLLER** connects to the broker, it automatically sends its meta information. **CLIENTS** also subscribe on this topic at startup to receive such meta information. 
+    
+    * **ROBOT_NAME/commands** - to allow **CLIENTS** to send commands to control the arm and **CONTROLLERS** to send notifications to **CLIENTS**. The **ROBOT_NAME** is a prefix of this topic to distinguish between different robots that can be available in a same broker. 
 
 
-      #### Functions 
+    #### Meta Info Object
 
-      The functions and the answers exchanged between clients and the controller are encapsulated in the payload of the message (communicate through channel `EDScorbot/commands`). We distinguish which function or signal is sent/received using integers wose semantics is as follows:
+    The information about each robotic arm (robot name, joints, range of values for each joint, etc) are encapsulated in an object called `MetaInfoObject`. Its internal structure is detailed as follows:
+      * `signal` (required) - meaning if the meta information has been requested (**ARM_GET_METAINFO = 1**) by **CLIENTS** or if its is an answer from **CONTROLLER** to **CLIENTS** (**ARM_METAINFO = 2**) 
+      * `name` - the robot name
+      * `joints` - a list of amr's joints where each joint is a pair with its `minimum` and `maximum` values in angles)
 
-      * `ARM_CHECK_STATUS` (value 3) - provided to CLIENTS use to check the status of the arm. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
+      #### Commands Object 
 
-      * `ARM_STATUS` (value 4) - provided to the CONTROLLER inform the current status of the arm. CONTROLLER (publisher) sends this data to the CLIENTS (subscribers)
-
-     * `ARM_CONNECT` (value 5) - provided to CLIENTS use to connect to the arm, so they can become owners. If the arm is available, the controller promotes on client to `owner` and notifies all clients about it. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_CONNECTED` (value 6) - provided to the CONTROLLER inform which client has successfully connected to the arm and became its `owner`. Only one client can be the amr's owner at a time. By the message content, client are able to know if they have been rejected as owner. CONTROLLER (publisher) sends this data to the CLIENTS (subscribers)
-        
-      * `ARM_MOVE_TO_POINT` (value 7) - provided to allow the owner to move the arm in a point by point interaction. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-
-      * `ARM_APPLY_TRAJECTORY` (value 8) - provided to allow arm's owner to send a trajectory to the controller. A trajectory is a sequence of points and its execution respects the order of the points. Each point represents a single movement to be executed by the robot. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_CANCEL_TRAJECTORY` (value 9) - provided to allow arm's owner to cancel a trajectory execution at any time. The arm stops in the last point and communicates it. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_CANCELED_TRAJECTORY` (value 10) - provided to allow arm's owner to cancel a trajectory execution at any time. The arm stops in the last point and communicates it. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_DISCONNECT` (value 11) - provided to allow arm's owner (CLIENT) to `release` the arm. CLIENTS (publishers) send this function request to the CONTROLLER (subscriber)
-
-      * `ARM_DISCONNECTED` (value 12) - provided to allow the CONTROLLER inform that the owner has disconnected and the arm is available. CONTROLLER (publisher) sends this data to the CLIENTS (subscribers)
-
-      * `ARM_HOME_SEARCHED` (value 13) - provided to allow the CONTROLLER inform that the arm has been moved to home position. This is necessary because when a user connects to the arm, the CONTROLLER must move it to home by using the procedure `search_home` which might take about 2 min at most. While the arm is searching its home position, no other operation is allowed. CONTROLLER (publisher) sends this data to the CLIENTS (subscribers)
-
+      The functions and the answers exchanged between clients and the controller are encapsulated in an object called **CommandsObject**. Its internal structure is detailed as follows:
+      * `signal` (required) - representing a `function` to be executed by the **CONTROLLER** or an `answer` sent by the **CONTROLLER**. The possible values are:
+        * `ARM_CHECK_STATUS = 3` - a code for metainfo request from a **CLIENT**
+        * `ARM_STATUS = 4` - a code for the metainfo response sent by the **CONTROLLER**
+        * `ARM_CONNECT = 5` - a code for a connect request from a **CLIENT** that wants to become the arm's owner. If the arm is available, its **CONTROLLER** accepts the connection request, notifies all clients about it, move the arm to home position and notifies the owner that home position has been reached. When connecting to the arm, the owner waits untill the arm moves to home position before sending movements to it.
+        * `ARM_CONNECTED = 6` - a code for the notification sent by the **CONTROLLER** about its current owner.
+        * `ARM_MOVE_TO_POINT = 7` - a code for a request from a **CLIENT** to move the arm to a specific point. The user interface guarantees that only the arm's owner is able to move the arm, and the **CONTROLLER** accepts only movement commands from arm's owner.
+        * `ARM_APPLY_TRAJECTORY = 8` - a code for a request from arm's owner to move the arm accoding to the points of a trajectory (a sequence of points). Each point represents a single movement to be executed by the robot.
+        * `ARM_CANCEL_TRAJECTORY = 9` - a code for a request from arm's owner to cancel the current execution of a trajectory. The arm stops the execution and communicates the last point to which the arm was moved to.
+        * `ARM_CANCELED_TRAJECTORY = 10` - a code for the answer sent by the **CONTROLLER** about the trajectory execution has been cancelled.
+        * `ARM_DISCONNECT = 11` - a code for a disconnect request from arm's owner. 
+        * `ARM_DISCONNECTED = 12` - a code for the **CONTROLLER** communicate its owner nas disconnected and the arm is available again. 
+        * `ARM_HOME_SEARCHED = 13` - a code for the **CONTROLLER** communicate that the home position has been reached. While the arm is searching its home position, no other operation is allowed.
 
 
   termsOfService: https://asyncapi.org/terms/
@@ -99,53 +82,43 @@ servers:
 
 defaultContentType: application/json
 
-#tags:
-#  - name: connection
-#    description: Connection/Disconnection actions to be executed and their related topics
-  
 channels:
   'metainfo':
-    description: Channel/topic provided to allow communication of metainfos. This channel plays the role of a "meta" channel where multiple CONTROLLERS can publish information about themselves and CLIENTS can obtain information about them at once.  We use a design in which different CONTROLLERS can be registered in the broker. Thus, they respond this message and CLIENTS can choose which arm to interact with. This design makes possible to connect a same client application with different arms.   
+    description: Channel/topic provided to allow communication of metainfos. This channel plays the role of a "meta" channel where multiple **CONTROLLERS** can publish information about themselves and **CLIENTS** can obtain information about all registered arms, so they can choose which arm to connect.    
     publish:
-      summary: CLIENTS and CONTROLLERS are publishers
       operationId: metainfoPub
       message:
         payload:
           $ref: '#/components/schemas/MetaInfoObject'
 
     subscribe:
-      summary: CLIENTS and CONTROLLERS are subscribers
       operationId: metainfoSub
       message:
         payload:
           $ref: '#/components/schemas/MetaInfoObject'
      
-  'EDScorbot/commands':
-    description: Channel/topic provided to allow interactions between CLIENTS and CONTROLLERS, so that commands can be sent to the arm and suitable answers can be returned to CLIENTS.  
+  'ROBOT_NAME/commands':
+    description: Channel/topic provided to allow interactions so that commands can be sent by **CLIENTS** and suitable answers can be returned by the **CONTROLLER**.  
     publish:
-      summary: CLIENTS and CONTROLLERS are publishers
       operationId: commandsPub
       message:
         payload:
           $ref: '#/components/schemas/CommandObject'
-    subscribe:
-      summary: CLIENTS and CONTROLLERS are publishers 
+    subscribe: 
       operationId: commandsSub
       message:
         payload:
           $ref: '#/components/schemas/CommandObject'   
   
-  'EDScorbot/moved':
-    description: Channel/topic provided to allow the CONTROLLER to publish the last point of the arm. The controller is supposed to publish this point each time the arm is moved. Therefore, it does not matter if the controller has moved the arm to the home position of is executing an entire trajectory.  
+  'ROBOT_NAME/moved':
+    description: Channel/topic provided to allow the **CONTROLLER** to publish the last point of the arm. The controller is supposed to publish this point each time the arm is moved. Therefore, it does not matter if the controller has moved the arm to the home position of is executing an entire trajectory.  
     publish:
-      summary: CONTROLLER is publisher
       operationId: movedPub
       message:
         payload:
           $ref: '#/components/schemas/MovedObject'
     subscribe:
-      summary: CLIENTS are subscribers
-      operationId: trajectoryPointRec
+      operationId: movedSub
       message:
         payload:
           $ref: '#/components/schemas/MovedObject'
@@ -154,41 +127,34 @@ components:
   schemas:
     Client:
       type: object
-      description: A client of the arm. It represents an user that wants to interact with the arm. It encapsulates all relevant information about the arm's client.
+      description: A client of the arm. It represents an arm's user.
       properties:
         id:
           type: string
-          description: The client identifier (email, token, etc.)
+          description: The client identifier (username)
     
-    Joint:
-      type: integer
-      description: The reference value (angle) of a joint.
-
     Point:
       type: object
-      description: A tuple (set of coordinates) containing (possibly many) information about the angles of the joints and one information (the last coordinate) meaning the time to wait before accepting the next move command. The representation of a point as an array allows many robots to be handled as there is no fixed number of joints. This is formation should be obtained bu clients before connecting to a specific arm. 
+      description: A tuple containing the angles of each joint and one information (the last coordinate) meaning the time to wait after moving the arm to this point. The use of an internal list provides a flexible ways to allow many robots, as they can have different number of joints.  
       properties:
         coordinates:
           type: array
           items:
-            $ref: '#/components/schemas/Joint'
+            type: integer
     
     Trajectory:
       type: object
+      description: An object encapsulating a list of points to be applied. 
       properties:
         points:
           type: array
-          description: A array of points to be applied to the arm.
+          description: A list of points to be applied to the arm.
           items:
             $ref: '#/components/schemas/Point'
           
-    ErrorState:
-      type: boolean
-      description: A flag representing that the controller is in an internal error state probably due to some problem with the physical arm. 
-
     CommandsSignal:
       type: integer
-      description: The function/answer involved in the `commands` topic.  
+      description: A code of a function/answer involved in the `commands` topic.  
       enum:
         - ARM_CHECK_STATUS = 3
         - ARM_STATUS = 4
@@ -204,14 +170,14 @@ components:
 
     MetaInfoSignal:
       type: integer
-      description: a signal indicating if is a request (ARM_GET_METAINFO) or a response (ARM_METAINFO)
+      description: a signal or code included in the `MetaInfoObject`
       enum:
         - ARM_GET_METAINFO = 1
         - ARM_METAINFO = 2
 
     MetaInfoObject:
       type: object
-      description: The metainfo about the robot. For the moment we use only the name and the number of joints of the robot. Each joint has a range between a minimum and a maximum values to be informed in the metainfo. The metainfo containz exactly the number of joints in the robot
+      description: The metainfo about one robot.
       required:
         - signal
       properties:
@@ -222,13 +188,13 @@ components:
           description: The name of the robot
         joints:
           type: array
-          description: The information about each joint of the robot
+          description: The list of all joints of the robot
           items:
             $ref: '#/components/schemas/JointInfo'
 
     JointInfo:
       type: object
-      description: Meta information about a joint. It contains the minimum and the maximum angles of the joint.
+      description: Information about a joint.
       properties:
         minimum:
           type: number
@@ -237,28 +203,35 @@ components:
 
     CommandObject:
       type: object
-      description: The object involved in the interaction with the arm. It contains all the information necessary to be exchanged between CLIENTS and CONTROLLERS for all functions to be invoked. Depending on the invoked function or answer the payload content changes. 
+      description: An object encapsulating all relevant information about a command to be executed by the arm and the answer to be sent to the client. 
       required:
         - signal
       properties:
         signal:
+          description: The code of an operation/answer
           $ref: '#/components/schemas/CommandsSignal'
         client:
+          description: The user involved in a command exchanged between **CLIENTS** and **CONTROLLER**
           $ref: '#/components/schemas/Client'
         error:
-          $ref: '#/components/schemas/ErrorState'
+          type: boolean
+          description: A flag representing that the controller is in an internal error state probably due to some problem with the physical arm. 
         point:
+          description: A single point to move the arm. This field is present only then `signal = ARM_MOVE_TO_POINT`. 
           $ref: '#/components/schemas/Point'
         trajectory:
+          description: A trajectory to be applied to the arm. This field is present only then `signal = ARM_APPLY_TRAJECTORY`.
           $ref: '#/components/schemas/Trajectory'
           
     MovedObject:
       type: object
-      description: The object to be communicated though channel `moved`. It contains one point, the error state and the client (owner)
+      description: An object encapsulating all relevant information about a movement of the arm. 
       properties:
         client:
           $ref: '#/components/schemas/Client'
+          description: The owner of the arm (only him can move the arm).
         error:
-          $ref: '#/components/schemas/ErrorState'
+          type: boolean
+          description: A flag representing that the controller is in an internal error state probably due to some problem with the physical arm. 
         content:
           $ref: '#/components/schemas/Point'
