@@ -3,7 +3,7 @@ This repository contains the simulated server, an application that simulates the
 
 The main use of this project is to provide a first version of the real server to be embedded into the arm. 
 
-the implementation follows the [Async API specification](https://app.swaggerhub.com/apis-docs/ADALBERTOCAJUEIRO_1/ed-scorbot_async/1.0.0), establishing all channels/topics and the data to be exchanged between applications.
+The implementation follows the [Async API specification](https://app.swaggerhub.com/apis-docs/ADALBERTOCAJUEIRO_1/ed-scorbot_async/1.0.0), establishing all channels/topics and the data to be exchanged between applications.
 
 ### Tools Information
 This project has been developed using the following tools:
@@ -13,21 +13,18 @@ This project has been developed using the following tools:
 * Visual Studio Code version 1.77.1 with C/C++ Extension Pack.  
 
 ### Project structure
-* After downloading and extracting the project, the folder `edscorbot-c-cpp` is the root folder. It has a specific folder/files structure.
-* The file `edscorbot-c-cpp/CMakeLists.txt` contains the configuration and goals for this project.
+* After downloading and extracting the project, open the folder `edscorbot-c-cpp`. It has a specific folder/files structure.
+* File `edscorbot-c-cpp/CMakeLists.txt` contains the configuration and goals for this project.
 * File `include/server-defs.hpp` contains the objects implementing the schemas defined in the Async API specification. Have a look at them to undestand their features. 
 * File `impl/server-impls.cpp` contains some basic implementations.
 
 It is important to have a look at these files jointly with the API specification to understand the adherence between them.
 
-### Installing
-* You can try to use your own versions of the tools. If it does not work we advice to install the above versions
+### Installing and Compiling
+* You can try to use your own versions of the tools. If it does not work we suggest you to install the above versions
 * Download de project and unzip it
 * Open the project in Visual Studio Code (vscode). It might be possible vscode offers other extensions to be installed. Just accept it.
-
-
-### Compiling
-The project depends on other specific projects that must be available or previously compiled or installed:
+* The project depends on other specific projects that must be available or previously compiled or installed:
 
 #### Compiling Mosquitto
 As the server connects with Mosquitto broker, its compilation requires the Mosquitto libraries. You can download the [Mosquitto sources](https://github.com/eclipse/mosquitto) and compile it to any target platform. We have compiled it to the local platform considering static libraries. You can customize the compilation options and install/compile the dependencies (this is the recommended approach). In our example, we had run:
