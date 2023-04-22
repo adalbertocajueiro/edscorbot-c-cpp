@@ -4,9 +4,9 @@
 
 using json = nlohmann::json;
 
-//controller name
-//TODO Adjust to your controller name
-const std::string CONTROLLER_NAME = "EDScorbot";
+//TODO Adjust 
+//to your controller name
+const std::string CONTROLLER_NAME = "EDScorbotSim";
 
 //channel names
 const std::string META_INFO = "metainfo";
