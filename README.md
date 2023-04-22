@@ -30,9 +30,9 @@ It is important to have a look at these files jointly with the API specification
 As the server connects with Mosquitto broker, its compilation requires the Mosquitto libraries. You can download the [Mosquitto sources](https://github.com/eclipse/mosquitto) and compile it to any target platform. We have compiled it to the local platform considering static libraries. You can customize the compilation options and install/compile the dependencies (this is the recommended approach). In our example, we had run:
 * `sudo apt-get update` to update the artifact list  
 * `sudo apt-get install openssl libssl-dev` to install openssl and openssl development files
-* `sudo apt-get install libcjson-dev` to install libcjson. this lib is required to compile `mosquitto_pub` and `mosquitto_sub` tools 
+* `sudo apt-get install libcjson-dev` to install libcjson. This lib is required to compile `mosquitto_pub` and `mosquitto_sub` tools 
 * `sudo apt-get install xsltproc` to install the support for generating documentation during the compilation
-* We had to set the option to generate static libraries in file `mosquitto/CMakeLists.txt`: 
+* In file`mosquitto/CMakeLists.txt` lookup the line to set the generation of static libraries: 
     
     `option(WITH_STATIC_LIBRARIES "Build static versions of the libmosquitto/pp libraries?" ON)`
 
