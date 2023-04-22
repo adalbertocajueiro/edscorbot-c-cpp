@@ -76,6 +76,20 @@ After that, the steps to compile the project are:
 * `make install` to compile and generate the executable of the simulated server.
 
 ### Running 
+Before runnign the simulated server, you must configure the Mosquitto broker to also accept messages trough Web sockets (required by the Angular front-end). This is achived by providing the following configuration (in a suitable `mosquitto.conf` file):
+
+```
+# calls through port 1883 an from any host using default protocol
+listener 1883 0.0.0.0 
+
+# calls through port 8080 an from any host using websockets protocol
+listener 8080 0.0.0.0
+protocol websockets
+
+# to allow applications to connect anonymously
+allow_anonymous true
+```
+
 After compiling, identify the instance of Mosquitto you want to connect and adjust the value of the variable `#define mqtt_host "localhost"` in `simulated_server.cpp`.Visual studio code offers a button to start the server (Debug or Run). Run it. If everything goes well you should se something as bellow:
 
 
