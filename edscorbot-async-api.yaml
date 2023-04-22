@@ -14,12 +14,16 @@ info:
 
     * [Ed Scorbot Documentation](https://py-edscorbottool.readthedocs.io/en/latest/) - documentation about the entire project
 
+    * [EDScorbot Simulated Server](https://github.com/adalbertocajueiro/edscorbot-c-cpp) - a C/C++ microservice of a simulated arm controller adherent to this specification
+
+    * [EDScorbot Web Application](https://github.com/adalbertocajueiro/edscorbot-angular) - the Web application of the EDScorbot project, implementad in Angular and adherent to this specification
+
  
     #### Symbology
 
-    * **CONTROLLER** - Arm's high level controller. The microservice service responsible for receiving messages from clients, handling the physical arm and notifying clients. It guarantees the arm works according with its requirements.
+    * **CONTROLLER** - Arm's high level controller. The microservice service responsible for receiving messages from **CLIENTS**, handling the physical arm and notifying **CLIENTS**. It guarantees the arm works according to its requirements.
 
-    * **CLIENT** = Any application that wants to interact with the arm. In our case, this application is an Angular front-end to provide a friendly user experience to the final user (human).
+    * **CLIENT** = Any application that wants to interact with the arm. In our case, this application is a Web application to provide a friendly user experience to the final user (human).
 
     * **CONTROLLER** and **CLIENT** can be publishers and subscribers at the same time. For each arm there is only one **CONTROLLER** and possibly many **CLIENTS**. The **CONTROLLER** is responsible for guaranteeing the correct funcioning of the arm in a scenario where many **CLIENTS** want to use the robotic arm. The arm accepts only one **CLIENT** at a time (which becomes the arm's owner). Other clients can use the arm only when the arm is free (there is no current owner).
 
@@ -31,29 +35,31 @@ info:
     
     * **ROBOT_NAME/commands** - to allow **CLIENTS** to send commands to control the arm and **CONTROLLERS** to send notifications to **CLIENTS**. The **ROBOT_NAME** is a prefix of this topic to distinguish between different robots that can be available in a same broker. 
 
+    * **ROBOT_NAME/moved** - to allow the **CONTROLLER** to send the points the arm has been moved to. 
+
 
     #### Meta Info Object
 
-    The information about each robotic arm (robot name, joints, range of values for each joint, etc) are encapsulated in an object called `MetaInfoObject`. Its internal structure is detailed as follows:
+    The information about a robotic arm (robot name, joints, range of values for each joint, etc) are encapsulated in an object called `MetaInfoObject`. Its internal structure is detailed as follows:
       * `signal` (required) - meaning if the meta information has been requested (**ARM_GET_METAINFO = 1**) by **CLIENTS** or if its is an answer from **CONTROLLER** to **CLIENTS** (**ARM_METAINFO = 2**) 
       * `name` - the robot name
-      * `joints` - a list of amr's joints where each joint is a pair with its `minimum` and `maximum` values in angles)
+      * `joints` - a list of amr's joints where each joint is a pair with its `minimum` and `maximum` values in angles
 
       #### Commands Object 
 
-      The functions and the answers exchanged between clients and the controller are encapsulated in an object called **CommandsObject**. Its internal structure is detailed as follows:
-      * `signal` (required) - representing a `function` to be executed by the **CONTROLLER** or an `answer` sent by the **CONTROLLER**. The possible values are:
-        * `ARM_CHECK_STATUS = 3` - a code for metainfo request from a **CLIENT**
-        * `ARM_STATUS = 4` - a code for the metainfo response sent by the **CONTROLLER**
-        * `ARM_CONNECT = 5` - a code for a connect request from a **CLIENT** that wants to become the arm's owner. If the arm is available, its **CONTROLLER** accepts the connection request, notifies all clients about it, move the arm to home position and notifies the owner that home position has been reached. When connecting to the arm, the owner waits untill the arm moves to home position before sending movements to it.
-        * `ARM_CONNECTED = 6` - a code for the notification sent by the **CONTROLLER** about its current owner.
-        * `ARM_MOVE_TO_POINT = 7` - a code for a request from a **CLIENT** to move the arm to a specific point. The user interface guarantees that only the arm's owner is able to move the arm, and the **CONTROLLER** accepts only movement commands from arm's owner.
-        * `ARM_APPLY_TRAJECTORY = 8` - a code for a request from arm's owner to move the arm accoding to the points of a trajectory (a sequence of points). Each point represents a single movement to be executed by the robot.
-        * `ARM_CANCEL_TRAJECTORY = 9` - a code for a request from arm's owner to cancel the current execution of a trajectory. The arm stops the execution and communicates the last point to which the arm was moved to.
-        * `ARM_CANCELED_TRAJECTORY = 10` - a code for the answer sent by the **CONTROLLER** about the trajectory execution has been cancelled.
-        * `ARM_DISCONNECT = 11` - a code for a disconnect request from arm's owner. 
-        * `ARM_DISCONNECTED = 12` - a code for the **CONTROLLER** communicate its owner nas disconnected and the arm is available again. 
-        * `ARM_HOME_SEARCHED = 13` - a code for the **CONTROLLER** communicate that the home position has been reached. While the arm is searching its home position, no other operation is allowed.
+      The possible actions executed by the arm and their answers are encapsulated in an object called **CommandsObject**. Its internal structure is detailed as follows:
+      * `signal` (required) - representing an `action` to be executed by the **CONTROLLER** or an `answer` sent to **CLIENTS**. Its possible values are:
+        * `ARM_CHECK_STATUS = 3` - a code meaning a **CLIENT** has requested the metainfos of all arms.
+        * `ARM_STATUS = 4` - a code meaning the answer containing the metainfo sent by the **CONTROLLER**
+        * `ARM_CONNECT = 5` - a code meaning a **CLIENT** wants to connect with the arm and become its owner. If the arm is available, its **CONTROLLER** accepts the connection request, notifies all clients about it, move the arm to the home position and notifies the owner that home position has been reached. When connecting to the arm, the owner waits untill the arm moves to home position before sending movements to it.
+        * `ARM_CONNECTED = 6` - a code meaning the acceptance answer sent by the **CONTROLLER** to a connect request.
+        * `ARM_MOVE_TO_POINT = 7` - a meaning a **CLIENT** (must be the owner) requested to move the arm to a specific point. The user interface guarantees that only the arm's owner is able to move the arm, and the **CONTROLLER** accepts only movement commands from arm's owner.
+        * `ARM_APPLY_TRAJECTORY = 8` - a code meaning the arm's owner requested to move the arm accoding to a trajectory (a sequence of points). Each point represents a single movement to be executed by the robot.
+        * `ARM_CANCEL_TRAJECTORY = 9` - a code meaning the arm's owner requested to cancel the current execution of a trajectory. The arm stops the execution and communicates the last point to which the arm was moved to.
+        * `ARM_CANCELED_TRAJECTORY = 10` - a code meaning sent by the **CONTROLLER** about the trajectory execution has been cancelled.
+        * `ARM_DISCONNECT = 11` - a code meaning the arm's owner requested to disconnect from the arm. 
+        * `ARM_DISCONNECTED = 12` - a code meaning the answer sent by the **CONTROLLER** about disconnecting its owner so that the arm is available again. 
+        * `ARM_HOME_SEARCHED = 13` - a code meaning whe answer sent by the **CONTROLLER** communicating that the home position has been reached.
 
 
   termsOfService: https://asyncapi.org/terms/
