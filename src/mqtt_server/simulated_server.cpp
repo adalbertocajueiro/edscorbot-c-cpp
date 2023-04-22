@@ -10,8 +10,13 @@
 
 
 #define DEFAULT_SLEEP 125000 //microseconds
-// the server with all implementations
-//#define mqtt_host "192.168.1.104"
+
+/**
+ * The broker host. There is an instance of Mosquitto running at 192.168.1.104
+ * For the simulated server we suggest to use a local instance of Mosquitto
+ *
+ * TODO: Adjust the value to point to your mosquitto host
+ **/
 #define mqtt_host "localhost"
 #define mqtt_port 1883
 
@@ -31,22 +36,44 @@ typedef struct
 
 progress_info progress;
 
-//variable storing the cnext point to move the arm
+/**
+ * A global variable maintaining the current point to move the arm
+ * This point is initially empty and its value is updated when the user
+ * requests via ARM_MOVE_TO_POINT signal. After the robotc arm is moved
+ * its value is reset to an empty point again.
+**/
 Point current_point;
 
+/**
+ * A global variable maintaining the current trajectory to be executed
+ * This trajectory is initially empty and its value is updated when the user
+ * requests via ARM_APPLY_TRAJECTORY signal. After the trajectory is applied 
+ * its value is reset to and empty trajectory again.
+ **/
+Trajectory current_trajectory;
+
+/**
+ * Global flag informing that a trajectory is being executed or not 
+**/
 bool executing_trajectory = false;
 
 
 /**
- * The function to send arm to home. This must be executed into a thread
+ * Function to move the arm to home position. It must be executed into a 
+ * thread to avoid blocking the main process and disconnect from the broker.
+ * Before calling this function all pre-conditions have already been validated
 */
 void* search_home_threaded_function(void* arg){
-	//to execute search home we need the suitable signal, the owner and the error state
-	// the owner has already been validated to allow this execution in the callback
+	//the answer
 	CommandObject output = CommandObject(ARM_HOME_SEARCHED);
 	output.client = owner;
-	output.error = error_state; 
+	output.error = error_state;
 
+	/**
+	 * A sleep time representing the action of moving the arm to home position
+	 * 
+	 * TODO: Replace this code with the real procedure to move the arm to home
+	 **/
 	usleep(4000000);
 	
 	//publish message notifying that home has been reached
@@ -55,28 +82,38 @@ void* search_home_threaded_function(void* arg){
 	return NULL;
 }
 
+/**
+ * Function to move the arm to a single point. It must be executed into a
+ * thread to avoid blocking the main process and disconnect from the broker.
+ * Before calling this function all pre-conditions have already been validated
+ */
 void* move_to_point_threaded_function(void* arg){
-	//to move to a single point we need the owner, the error state and the point
-	// the owner has already been validated to allow this execution in the callback
+	//the answer
 	MovedObject output = MovedObject();
 	output.client = owner;
-	output.error = error_state; 	
+	output.error = error_state;
 
-	//call the low level function to move to a single point considering 
-	//the coordinates contain angles in degrees and are previously stored in 
-	//current_point (current_point.coordinates) 
-
-	//this command is representing the arm is moving to a point. replate it with your code
+	/**
+	 * A sleep time representing the action of moving the arm to home position
+	 *
+	 * TODO: Replace this code with the real procedure to move the arm to a point
+	 * The values for each joint are stored in the global variable "current_point"
+	 * (current_point.coordinates)
+	**/
 	usleep(2000000);
 
-	//after movind get the counters from the arm and convert them into angles in degrees
-	//put them into realPoint variable 
-	//it is important to fill the coordinates with the number of joints
-	//informed in the metainfo.
-	// for the moment we publish the same point we have received
+	/**
+	 * TODO: After moving the arm, get the counter value for each joint and convert
+	 * them to angles. Then use the variable realPoint bellow to assign these
+	 * values (realPoint.coordinates[index] = count_to_angle(value)). Check if the
+	 * number of coordinates  matched the number of joints in the global variable
+	 * METAINFOS
+	 *
+	 * For the moment we simply publish the the current_point
+	 **/
 	Point realPoint = current_point;
 
-	//for the moment we use current_point to notify the user
+	//sets the content of the answer
 	output.content = realPoint;
 	
 	//publish message notifying that the point has been published
@@ -91,51 +128,55 @@ void* move_to_point_threaded_function(void* arg){
 
 
 
-//the function below is intented to be used in trajectory execution because the execution of 
-//alll points of a trajectory cannot be threaded (different points would be executed concurrently,
-//causing a terrible side-effect)
+//the function below is intented to be used
+/**
+ * Function to move the arm to a single point to be used in trajectory execution because the execution of
+ * each point of a trajectory cannot be threaded (different points would be executed concurrently,
+ * causing a terrible side-effect)
+ */
 void move_to_point(Point point){
+	//the answer to communicate each point
 	MovedObject output = MovedObject();
 	output.client = owner;
-	output.error = error_state; 
+	output.error = error_state;
 
-	//call the low level function to move to a single point considering 
-	//the coordinates contain angles in degrees and are previously stored in 
-	//current_point (current_point.coordinates) 
-
-	//this command is representing the arm is moving to a point. replate it with your code
+	/**
+	 * A sleep time representing the action of moving the arm to home position
+	 *
+	 * TODO: Replace this code with the real procedure to move the arm to a point
+	 * The values for each joint are stored in the global variable "current_point"
+	 * (current_point.coordinates)
+	 **/
 	usleep(2000000);
 
-	//after movind get the counters from the arm and convert them into angles in degrees
-	//put them into realPoint variable 
-	//it is important to fill the coordinates with the number of joints
-	//informed in the metainfo.
-	// for the moment we publish the same point we have received
+	/**
+	 * TODO: After moving the arm, get the counter value for each joint and convert
+	 * them to angles. Then use the variable realPoint bellow to assign these
+	 * values (realPoint.coordinates[index] = count_to_angle(value)). Check if the
+	 * number of coordinates  matched the number of joints in the global variable
+	 * METAINFOS
+	 *
+	 * For the moment we simply publish the same point we have received
+	 **/
 	Point realPoint = point;
 
-	//for the moment we use current_point to notify the user
+	// sets the content of the answer
 	output.content = realPoint;
-	
-	//publish message notifying that the point has been published
-	publish_message(MOVED_TOPIC,output.to_json().dump().c_str());
-	std::cout << "Arm moved to point " << output.content.to_json().dump().c_str() << std::endl;
 
-	//after publishing the message, the current_point must be re-instantiated with empty point
-	current_point = Point();
+	// publish message notifying that the point has been published
+	publish_message(MOVED_TOPIC, output.to_json().dump().c_str());
+	std::cout << "Arm moved to point " << output.content.to_json().dump().c_str() << std::endl;
 	
 	return;
 }
 
-//the current trajectory to be executed
-Trajectory current_trajectory;
-
+/**
+ * Function to aply a trajectory. It must be executed into a
+ * thread to avoid blocking the main process and disconnect from the broker.
+ * Before calling this function all pre-conditions have already been validated
+ */
 void* apply_trajectory_threaded_function(void* arg){
-	//to apply a trajectory we need the owner, the error state and the trajectory
-	// the owner has already been validated to allow this execution in the callback
-	//the current trajectory is maintained in a global variable current_trajectory
-	//that is updated befoe starting this thread
-	
-	//points to be considered
+	//points to be considered come from the global variable "current_trajectory"
 	std::list<Point> points = std::list<Point>(current_trajectory.points);
 
 	//trajectory execution has been started
@@ -143,10 +184,8 @@ void* apply_trajectory_threaded_function(void* arg){
 
 	while (!points.empty() && executing_trajectory){
         Point p = points.front();
+		
 		move_to_point(p); 
-		//we need to handle the waiting time after start oving to a point.
-		//this time is the last coordinate of the point parameter
-		//usleep(p.coordinates.end()) // something like this ??????
 
 		points.erase(points.begin());
 	}
@@ -165,10 +204,12 @@ void handle_signal(int s)
 	run = 0;
 }
 
-//subscribes the robot in all relevant topics
-//ADJUST THE NAME OF YOUR ROBOT IN THE PREFIX OF THE TOPICS!!!!
+/**
+ * Function that registers the server into the broker using the suitable topics 
+**/
 void subscribe_all_topics()
 {
+	//it builds the topic names (META_INFO,COMMANDS_TOPIC,MOVED_TOPIC)
 	build_topics();
 
 	std::cout << "Subscribing on topic "
@@ -184,6 +225,10 @@ void subscribe_all_topics()
 	mosquitto_subscribe(mosq, NULL, COMMANDS_TOPIC.c_str(), 0);
 }
 
+/**
+ * Fuction that publishes a message (the string representation of a JSON object)
+ * using a specific topic
+ **/
 int publish_message(std::string topic, const char *buf)
 {
     char *payload = (char *)buf;
@@ -191,32 +236,36 @@ int publish_message(std::string topic, const char *buf)
 	return rc;
 }
 
-//handles messages on channel metainfo
-void handle_metainfo_message(std::string mesage){
+/**
+ * Function that handles messages delivered on channel metainfo
+ **/
+void handle_metainfo_message(std::string mesage)
+{
 	MetaInfoObject mi = initial_metainfoobj();
 	publish_message(META_INFO,mi.to_json().dump().c_str());
 }
 
-//handles messages on channel ROBOTNAME/commands
-//ADJUST THE ROBOT NAME IN YOUR IMPLEMENTATION
+/**
+ * Function that handles messages delivered on channel ROBOT_NAME/commands
+ **/
 void handle_commands_message(const struct mosquitto_message *message){
-	//extraces the signal from a message on channel ROBOTNAME/commands
+	//obtains the signal/code
 	int sig = extract_signal((char *)message->payload);
 
-	//creates a commandobject (a new output)
+	//the answer
 	CommandObject output = CommandObject(ARM_STATUS);
 
 	//parses the received command from the payload
 	CommandObject receivedCommand = CommandObject::from_json_string((char *)message->payload);
 	switch (sig)
 	{
-	case ARM_CHECK_STATUS:
+	case ARM_CHECK_STATUS: //user requested arm status
 		std::cout << "Request status received. "
 				  << " Sending payload " 
 				  << output.to_json().dump().c_str() << std::endl;
 		publish_message("EDScorbot/commands", output.to_json().dump().c_str());
 		break;
-	case ARM_CONNECT:
+	case ARM_CONNECT: //user wants to connect to the arm to become the owner
 		std::cout << "Request to connect received." << std::endl;
 
 		if (!owner.is_valid())
@@ -243,13 +292,13 @@ void handle_commands_message(const struct mosquitto_message *message){
 		}
 
 		break;
-	case ARM_MOVE_TO_POINT:
+	case ARM_MOVE_TO_POINT: //user requested to move the arm to a single point
 		std::cout << "Move to point request received. " << std::endl;
 
 		if (owner.is_valid())
 		{
 			Client client = receivedCommand.client;
-			if (owner == client)
+			if (owner == client) // only owner can do that
 			{
 				Point target = receivedCommand.point;
 				if (!target.is_empty())
@@ -271,12 +320,12 @@ void handle_commands_message(const struct mosquitto_message *message){
 			// arm has no owner ==> ignore
 		}
 		break;
-	case ARM_APPLY_TRAJECTORY:
+	case ARM_APPLY_TRAJECTORY:  //user requested to apply a trajectory
 		std::cout << "Apply trajectory received. " << std::endl;
 		if (owner.is_valid())
 		{
 			Client client = receivedCommand.client;
-			if (owner == client)
+			if (owner == client) //only owner can do that
 			{
 				current_trajectory = receivedCommand.trajectory;
 				int err = pthread_create(&apply_trajectory_thread, NULL, &apply_trajectory_threaded_function, NULL);
@@ -294,17 +343,18 @@ void handle_commands_message(const struct mosquitto_message *message){
 			// arm has no owner ==> ignore
 		}
 		break;
-	case ARM_CANCEL_TRAJECTORY:
+	case ARM_CANCEL_TRAJECTORY: //user requested to cancel trajectory execution
 		std::cout << "Cancel trajectory received. " << std::endl;
 		if (owner.is_valid())
 		{
 			Client client = receivedCommand.client;
-			if (owner == client)
+			if (owner == client) // only owner can do that
 			{
 				executing_trajectory = false;
 				output.signal = ARM_CANCELED_TRAJECTORY;
 				output.client = owner;
 				output.error = error_state;
+
 				publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 				std::cout << "Trajectory cancelled. " << std::endl;
 			}
@@ -314,22 +364,21 @@ void handle_commands_message(const struct mosquitto_message *message){
 			// arm has no owner ==> ignore
 		}
 		break;
-	case ARM_DISCONNECT:
+	case ARM_DISCONNECT: //user requested to disconnect from the arm
 		
 		Client c = receivedCommand.client;
 		std::cout << "Request disconnect received. " 
 			<< receivedCommand.to_json().dump().c_str()
 			<< std::endl;
-		if (c == owner)
+		if (c == owner) // only owner can do that
 		{
 			owner = Client();
 			output.signal = ARM_DISCONNECTED;
 			output.client = c;
+
 			publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 			std::cout 	<< "Client disconnected " 
 						<< output.to_json().dump().c_str()
-						<< " on channel "
-						<< COMMANDS_TOPIC
 						<< std::endl;
 		}
 
@@ -340,14 +389,21 @@ void handle_commands_message(const struct mosquitto_message *message){
 }
 
 
+/**
+ * The callback function invoked by mosquitto when notifying all applications subscribed
+ * on specific topics  
+**/
 void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message)
 {
 
-	//if the message contains a signal then it has came from a client (angular)
-	//then follows the new communication model. otherwise, it does exactly as before
+	/**
+	 * If the message contains a signal then it has been sent from some application
+	 * the follows the async specification (the new model/flow). Otherwise, the server
+	 * must handle the message as before. 
+	**/
 	bool new_flow = has_signal((char *) message->payload);
 	if(new_flow){
-
+		//this is the logic for processing messages in the new model
 		bool match = std::strcmp(message->topic,"metainfo") == 0;
 		int sig = extract_signal((char *)message->payload);
 		if(match){
@@ -356,7 +412,7 @@ void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_
 			}
 
 		} else {
-			match = std::strcmp(message->topic,"EDScorbot/commands") == 0;
+			match = std::strcmp(message->topic,COMMANDS_TOPIC.c_str()) == 0;
 			if (match){
 				handle_commands_message(message);
 			}
@@ -364,8 +420,10 @@ void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_
 
 	} else {
 
-		// TODO
-		// do everything as before
+		/**
+		 * TODO: This is the sapce to put all the old code where the robot
+		 * received messages with a different structure of the async API 
+		**/
 	}
 
 }
@@ -393,8 +451,10 @@ int main(int argc, char *argv[])
     
 		rc = mosquitto_connect(mosq, mqtt_host, mqtt_port, 60);
 
+		//subscribe on all relevant topics
         subscribe_all_topics();
 
+		//publishes the metainfo of the robot
 		MetaInfoObject mi = initial_metainfoobj();
 		publish_message(META_INFO,mi.to_json().dump().c_str());
 		std::cout << "Metainfo published " << mi.to_json().dump().c_str() << std::endl;
