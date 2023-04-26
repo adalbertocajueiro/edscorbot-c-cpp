@@ -263,10 +263,12 @@ void handle_commands_message(const struct mosquitto_message *message){
 		std::cout << "Request status received. "
 				  << " Sending payload " 
 				  << output.to_json().dump().c_str() << std::endl;
-		publish_message("EDScorbot/commands", output.to_json().dump().c_str());
+		publish_message(COMMANDS_TOPIC, output.to_json().dump().c_str());
 		break;
 	case ARM_CONNECT: //user wants to connect to the arm to become the owner
-		std::cout << "Request to connect received." << std::endl;
+		std::cout << "Request to connect received: "
+				  << receivedCommand.to_json().dump().c_str()
+				  << std::endl;
 
 		if (!owner.is_valid())
 		{
@@ -367,7 +369,7 @@ void handle_commands_message(const struct mosquitto_message *message){
 	case ARM_DISCONNECT: //user requested to disconnect from the arm
 		
 		Client c = receivedCommand.client;
-		std::cout << "Request disconnect received. " 
+		std::cout << "Request disconnect received: " 
 			<< receivedCommand.to_json().dump().c_str()
 			<< std::endl;
 		if (c == owner) // only owner can do that
@@ -457,8 +459,13 @@ int main(int argc, char *argv[])
 		//publishes the metainfo of the robot
 		MetaInfoObject mi = initial_metainfoobj();
 		publish_message(META_INFO,mi.to_json().dump().c_str());
-		std::cout << "Metainfo published " << mi.to_json().dump().c_str() << std::endl;
-		
+		std::cout << "Metainfo published: " << mi.to_json().dump().c_str()
+				  << std::endl
+				  << std::endl
+				  << "Server ready to send/receive messages "
+				  << std::endl
+				  << std::endl;
+
 		rc = mosquitto_loop_start(mosq);
 		while (run)
 		{
