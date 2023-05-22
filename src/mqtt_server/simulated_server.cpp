@@ -4,7 +4,7 @@
 #include <thread>
 #include <unistd.h>
 #include "../impl/server-impls.cpp"
-#include "mosquitto.h"
+#include "include/mosquitto.h"
 #include "include/devmem.hpp"
 #include <pthread.h>
 
@@ -17,7 +17,7 @@
  *
  * TODO: Adjust the value to point to your mosquitto host
  **/
-#define mqtt_host "localhost"
+#define mqtt_host "172.22.240.1"
 #define mqtt_port 1883
 
 static int run = 1;
