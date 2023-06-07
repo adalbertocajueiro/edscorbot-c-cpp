@@ -18,7 +18,7 @@ set(LANGUAGE C_STANDARD)
 
 add_executable(simulated_server src/mqtt_server/simulated_server.cpp)
 
-target_include_directories(simulated_server PUBLIC "src" "./" "json/single_include/")
+target_include_directories(simulated_server PUBLIC "src" "./" "json/single_include/" "mosquitto/include/")
 
 #TODO
 # Replace the static lib full path with the full path of your machine

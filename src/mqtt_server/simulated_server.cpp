@@ -4,7 +4,7 @@
 #include <thread>
 #include <unistd.h>
 #include "../impl/server-impls.cpp"
-#include "include/mosquitto.h"
+#include "mosquitto.h"
 #include "include/devmem.hpp"
 #include <pthread.h>
 
